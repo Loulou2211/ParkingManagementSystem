@@ -1,0 +1,136 @@
+@page "/customers"
+@rendermode InteractiveServer
+@using ParkingManagementSystem.Models
+@using ParkingManagementSystem.Services
+@using CustomerModel = ParkingManagementSystem.Models.Customer
+@inject CustomerService CustomerService
+
+<PageTitle>Customer Management</PageTitle>
+
+<h1>Customer Management</h1>
+<p>Register and manage parking system members.</p>
+
+<h3>Register New Customer</h3>
+
+<div class="mb-3">
+    <label class="form-label">Customer Name</label>
+    <input class="form-control" @bind="newCustomer.Customer_Name" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Phone</label>
+    <input class="form-control" @bind="newCustomer.Phone" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Email</label>
+    <input class="form-control" type="email" @bind="newCustomer.Email" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Membership Status</label>
+    <select class="form-select" @bind="newCustomer.Membership_Status">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+    </select>
+</div>
+
+<button class="btn btn-primary" @onclick="RegisterCustomer">
+    Register Customer
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="mt-3">@message</p>
+}
+
+<hr />
+
+<h3>Customer List</h3>
+
+@if (customers == null)
+{
+    <p>Loading customers...</p>
+}
+else if (customers.Count == 0)
+{
+    <p>No customers found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Membership Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var customer in customers)
+            {
+                <tr>
+                    <td>@customer.Customer_ID</td>
+                    <td>@customer.Customer_Name</td>
+                    <td>@(customer.Phone ?? "-")</td>
+                    <td>@(customer.Email ?? "-")</td>
+                    <td>@customer.Membership_Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<CustomerModel> customers = new();
+
+    private CustomerModel newCustomer = new()
+    {
+        Membership_Status = "Active"
+    };
+
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await CustomerService.GetCustomersAsync();
+    }
+
+    private async Task RegisterCustomer()
+    {
+        message = "Registration method started!";
+        message = $"Register clicked. Name: [{newCustomer.Customer_Name}]";
+
+        if (string.IsNullOrWhiteSpace(newCustomer.Customer_Name))
+        {
+            message = "Please enter a customer name.";
+            return;
+        }
+
+        try
+        {
+            await CustomerService.AddCustomerAsync(newCustomer);
+
+            message = "Customer saved to database successfully!";
+
+            newCustomer = new CustomerModel
+            {
+                Membership_Status = "Active"
+            };
+
+            await LoadCustomers();
+        }
+        catch (Exception ex)
+        {
+            message = $"Registration failed: {ex.Message}";
+        }
+    }
+
+}

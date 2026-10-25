@@ -1,0 +1,151 @@
+
+@page "/vehicles"
+@rendermode InteractiveServer
+@using ParkingManagementSystem.Models
+@using VehicleModel = ParkingManagementSystem.Models.Vehicle
+@using ParkingManagementSystem.Services
+@inject VehicleService VehicleService
+@inject CustomerService CustomerService
+
+<PageTitle>Vehicle Management</PageTitle>
+
+<h1>Vehicle Management</h1>
+<p>Register vehicles belonging to parking system members.</p>
+
+<h3>Register New Vehicle</h3>
+
+<div class="mb-3">
+    <label class="form-label">License Plate</label>
+    <input class="form-control" @bind="newVehicle.License_Plate" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Vehicle Type</label>
+    <select class="form-select" @bind="newVehicle.Vehicle_Type">
+        <option value="">-- Select vehicle type --</option>
+        <option value="Car">Car</option>
+        <option value="Motorcycle">Motorcycle</option>
+        <option value="Truck">Truck</option>
+        <option value="Other">Other</option>
+    </select>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Customer</label>
+    <select class="form-select" @bind="newVehicle.Customer_ID">
+        <option value="0">-- Select customer --</option>
+        @foreach (var customer in customers)
+        {
+            <option value="@customer.Customer_ID">
+                @customer.Customer_Name (ID: @customer.Customer_ID)
+            </option>
+        }
+    </select>
+</div>
+
+<button class="btn btn-primary" @onclick="RegisterVehicle">
+    Register Vehicle
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="mt-3">@message</p>
+}
+
+<hr />
+
+<h3>Vehicle List</h3>
+
+@if (vehicles == null)
+{
+    <p>Loading vehicles...</p>
+}
+else if (vehicles.Count == 0)
+{
+    <p>No vehicles found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>License Plate</th>
+                <th>Vehicle Type</th>
+                <th>Customer ID</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in vehicles)
+            {
+                <tr>
+                    <td>@vehicle.Vehicle_ID</td>
+                    <td>@vehicle.License_Plate</td>
+                    <td>@vehicle.Vehicle_Type</td>
+                    <td>@vehicle.Customer_ID</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<VehicleModel>? vehicles;
+    private List<ParkingManagementSystem.Models.Customer> customers = new();
+    private VehicleModel newVehicle = new();
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        customers = await CustomerService.GetCustomersAsync();
+        vehicles = await VehicleService.GetVehiclesAsync();
+    }
+
+    private async Task RegisterVehicle()
+    {
+        if (string.IsNullOrWhiteSpace(newVehicle.License_Plate))
+        {
+            message = "Please enter a license plate.";
+            return;
+        }
+
+        if (newVehicle.License_Plate.Length > 20)
+        {
+            message = "License plate cannot exceed 20 characters.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newVehicle.Vehicle_Type))
+        {
+            message = "Please select a vehicle type.";
+            return;
+        }
+
+        if (newVehicle.Customer_ID <= 0 ||
+            !customers.Any(c => c.Customer_ID == newVehicle.Customer_ID))
+        {
+            message = "Please select a valid customer.";
+            return;
+        }
+
+        try
+        {
+            await VehicleService.AddVehicleAsync(newVehicle);
+
+            message = "Vehicle registered successfully!";
+
+            newVehicle = new VehicleModel();
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            message = $"Registration failed: {ex.Message}";
+        }
+    }
+}

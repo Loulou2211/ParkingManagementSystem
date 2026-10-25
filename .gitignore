@@ -1,0 +1,14 @@
+# .NET build files
+bin/
+obj/
+
+# IDE files
+.idea/
+.vs/
+*.user
+*.suo
+
+# Local configuration containing secrets
+appsettings.json
+appsettings.*.json
+!appsettings.example.json

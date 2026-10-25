@@ -1,0 +1,179 @@
+@page "/parking-spaces"
+@rendermode InteractiveServer
+@using ParkingManagementSystem.Models
+@using ParkingManagementSystem.Services
+@inject ParkingSpaceService ParkingSpaceService
+
+<PageTitle>Parking Space Management</PageTitle>
+
+<h1>Parking Space Management</h1>
+<p>Register and manage parking spaces in the parking facility.</p>
+
+<h3>Register New Parking Space</h3>
+
+<div class="nav-item px-3">
+    <NavLink class="nav-link" href="parking-spaces">
+        <span class="bi bi-p-square-fill-nav-menu"
+              aria-hidden="true"></span>
+        Parking Space Management
+    </NavLink>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Space Number</label>
+    <input class="form-control" @bind="newSpace.Space_Number"
+           placeholder="e.g. A001" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Space Type</label>
+    <select class="form-select" @bind="newSpace.Space_Type">
+        <option value="">-- Select space type --</option>
+        <option value="Car">Car</option>
+        <option value="Motorcycle">Motorcycle</option>
+        <option value="Disabled">Disabled Parking</option>
+        <option value="EV">Electric Vehicle</option>
+    </select>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Floor</label>
+    <input class="form-control" type="number"
+           @bind="newSpace.Floor" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Status</label>
+    <select class="form-select" @bind="newSpace.Status">
+        <option value="Available">Available</option>
+        <option value="Occupied">Occupied</option>
+        <option value="Maintenance">Maintenance</option>
+    </select>
+</div>
+
+<button class="btn btn-primary" @onclick="RegisterSpace">
+    Register Parking Space
+</button>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="mt-3">@message</p>
+}
+
+<hr />
+
+<h3>Parking Space List</h3>
+
+@if (loading)
+{
+    <p>Loading parking spaces...</p>
+}
+else if (spaces.Count == 0)
+{
+    <p>No parking spaces found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Space Number</th>
+                <th>Space Type</th>
+                <th>Floor</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var space in spaces)
+            {
+                <tr>
+                    <td>@space.Space_ID</td>
+                    <td>@space.Space_Number</td>
+                    <td>@space.Space_Type</td>
+                    <td>@space.Floor</td>
+                    <td>@space.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ParkingManagementSystem.Models.ParkingSpace> spaces = new();
+
+    private ParkingManagementSystem.Models.ParkingSpace newSpace = new()
+    {
+        Status = "Available"
+    };
+
+    private string message = "";
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSpaces();
+    }
+
+    private async Task LoadSpaces()
+    {
+        loading = true;
+
+        try
+        {
+            spaces = await ParkingSpaceService.GetParkingSpacesAsync();
+        }
+        catch (Exception ex)
+        {
+            message = $"Failed to load parking spaces: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task RegisterSpace()
+    {
+        message = "Register button clicked!";
+        Console.WriteLine("RegisterSpace method was called.");
+        message = "";
+
+        if (string.IsNullOrWhiteSpace(newSpace.Space_Number))
+        {
+            message = "Please enter a space number.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newSpace.Space_Type))
+        {
+            message = "Please select a space type.";
+            return;
+        }
+
+        if (newSpace.Floor < 0)
+        {
+            message = "Floor cannot be negative.";
+            return;
+        }
+
+        try
+        {
+            await ParkingSpaceService.AddParkingSpaceAsync(newSpace);
+
+            message = "Parking space registered successfully!";
+
+            newSpace = new ParkingManagementSystem.Models.ParkingSpace
+            {
+                Status = "Available"
+            };
+
+            await LoadSpaces();
+        }
+        catch (Exception ex)
+        {
+            message = $"Registration failed: {ex.Message}";
+            Console.WriteLine(ex.ToString());
+        }
+    }
+}
