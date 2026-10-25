@@ -8,6 +8,8 @@ builder.Services.AddScoped<DatabaseConnection>();
 builder.Services.AddScoped<CustomerService>();
 builder.Services.AddScoped<VehicleService>();
 builder.Services.AddScoped<ParkingSpaceService>();
+builder.Services.AddScoped<ParkingSessionService>();
+builder.Services.AddScoped<StaffService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

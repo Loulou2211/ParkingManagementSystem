@@ -1,0 +1,181 @@
+@page "/parking-sessions"
+@rendermode InteractiveServer
+@using ParkingSessionModel = ParkingManagementSystem.Models.ParkingSession
+@using VehicleModel = ParkingManagementSystem.Models.Vehicle
+@using StaffModel = ParkingManagementSystem.Models.Staff
+@using ParkingManagementSystem.Services
+@inject ParkingSessionService SessionService
+@inject VehicleService VehicleService
+@inject ParkingSpaceService SpaceService
+@inject NavigationManager Navigation
+@inject StaffService StaffService
+
+<h3>Parking Session Management</h3>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p>@message</p>
+}
+
+<h4>Register Vehicle Entry</h4>
+
+<EditForm Model="newSession" OnValidSubmit="AddSessionAsync">
+    <div class="mb-3">
+        <label>Vehicle</label>
+        <InputSelect class="form-select" @bind-Value="newSession.Vehicle_ID">
+            <option value="0">-- Select Vehicle --</option>
+            @foreach (var vehicle in vehicles)
+            {
+                <option value="@vehicle.Vehicle_ID">
+                    @vehicle.License_Plate (@vehicle.Vehicle_Type)
+                </option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label>Parking Space</label>
+        <InputSelect class="form-select" @bind-Value="newSession.Space_ID">
+            <option value="0">-- Select Available Space --</option>
+            @foreach (var space in availableSpaces)
+            {
+                <option value="@space.Space_ID">
+                    @space.Space_Number - @space.Space_Type
+                </option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label>Staff</label>
+        <InputSelect class="form-select" @bind-Value="newSession.Staff_ID">
+            <option value="0">-- Select Staff --</option>
+            @foreach (var staff in staffMembers)
+            {
+                <option value="@staff.Staff_ID">
+                    @staff.Staff_Name
+                </option>
+            }
+        </InputSelect>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Register Entry</button>
+</EditForm>
+
+<hr />
+
+<h4>Parking Sessions</h4>
+
+@if (sessions.Count == 0)
+{
+    <p>No parking sessions found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Vehicle ID</th>
+                <th>Space ID</th>
+                <th>Staff ID</th>
+                <th>Entry Time</th>
+                <th>Exit Time</th>
+                <th>Duration (minutes)</th>
+                <th>Amount</th>
+                <th>Payment Status</th>
+                <th>Session Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var session in sessions)
+            {
+                <tr>
+                    <td>@session.Session_ID</td>
+                    <td>@session.Vehicle_ID</td>
+                    <td>@session.Space_ID</td>
+                    <td>@session.Staff_ID</td>
+                    <td>@session.Entry_Time.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(session.Exit_Time?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                    <td>@(session.Duration?.ToString() ?? "-")</td>
+                    <td>@session.Amount.ToString("0.00")</td>
+                    <td>@(session.Payment_Status ?? "-")</td>
+                    <td>@(session.Session_Status ?? "-")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ParkingSessionModel> sessions = new();
+    private List<VehicleModel> vehicles = new();
+    private List<ParkingManagementSystem.Models.ParkingSpace> availableSpaces = new();
+    private List<StaffModel> staffMembers = new();
+
+    private ParkingSessionModel newSession = new()
+    {
+        Payment_Status = "Unpaid",
+        Session_Status = "Active"
+    };
+
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        sessions = await SessionService.GetSessionsAsync();
+        vehicles = await VehicleService.GetVehiclesAsync();
+
+        var allSpaces = await SpaceService.GetParkingSpacesAsync();
+        availableSpaces = allSpaces
+            .Where(space => space.Status == "Available")
+            .ToList();
+
+        await LoadStaffAsync();
+    }
+
+    private async Task LoadStaffAsync()
+    {
+        staffMembers = await StaffService.GetStaffAsync();
+    }
+
+    private async Task AddSessionAsync()
+    {
+        if (newSession.Vehicle_ID <= 0 ||
+            newSession.Space_ID <= 0 ||
+            newSession.Staff_ID <= 0)
+        {
+            message = "Please select a vehicle, parking space, and staff member.";
+            return;
+        }
+
+        try
+        {
+            await SessionService.AddSessionAsync(newSession);
+            message = "Parking entry registered successfully!";
+
+            newSession = new ParkingSessionModel
+            {
+                Payment_Status = "Unpaid",
+                Session_Status = "Active"
+            };
+
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+        }
+    }
+
+    public class StaffMember
+    {
+        public int Staff_ID { get; set; }
+        public string Staff_Name { get; set; } = "";
+    }
+}
